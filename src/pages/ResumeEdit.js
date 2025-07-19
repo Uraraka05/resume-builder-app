@@ -1,4 +1,4 @@
-
+import toast from 'react-hot-toast';
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db, storage } from "../features/auth/firebase";
@@ -6,7 +6,6 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useAuth } from "../features/auth/AuthContext";
 import NavBar from "../components/NavBar";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import toast from 'react-hot-toast';
 
 const defaultForm = {
   name: "",
