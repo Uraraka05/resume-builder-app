@@ -8,12 +8,6 @@ import NavBar from "../components/NavBar";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from 'react-hot-toast';
 
-// Import the template thumbnails
-import classicThumb from '../assets/classic-thumb.png';
-import modernThumb from '../assets/modern-thumb.png';
-import minimalistThumb from '../assets/minimalist-thumb.png';
-
-
 const defaultForm = {
   name: "",
   title: "",
@@ -81,23 +75,7 @@ function ResumeEdit() {
         }
     }
   };
-  const handleTemplateChange = async (templateName) => {
-    // Update the UI immediately for a responsive feel
-    setForm((prev) => ({ ...prev, template: templateName }));
 
-    // Save this specific change to Firestore in the background
-    if (user && resumeId) {
-        const resumeRef = doc(db, "users", user.uid, "resumes", resumeId);
-        try {
-            // Use { merge: true } to only update the template field
-            await setDoc(resumeRef, { template: templateName }, { merge: true });
-            toast.success(`Template changed to ${templateName}`);
-        } catch (error) {
-            toast.error("Could not save template choice.");
-        }
-    }
-  };
-  
   const handleSkillChange = (index, value) => {
     const newSkills = [...form.skills];
     newSkills[index] = value;

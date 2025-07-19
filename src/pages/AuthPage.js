@@ -1,8 +1,5 @@
-// Create this new file at: src/pages/AuthPage.js
-// You can then DELETE Login.js and SignUp.js
-
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../features/auth/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import toast from 'react-hot-toast';
