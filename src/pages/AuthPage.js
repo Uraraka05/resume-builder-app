@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../features/auth/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-
+import toast from 'react-hot-toast';
 
 // This is the new, combined component for both Login and Sign Up.
 function AuthPage() {
