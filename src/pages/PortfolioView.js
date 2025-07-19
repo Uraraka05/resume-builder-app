@@ -1,0 +1,90 @@
+import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { db } from "../features/auth/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import NavBar from "../components/NavBar";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+import { ModernTemplate } from '../components/templates/ModernTemplate';
+import { ClassicTemplate } from '../components/templates/ClassicTemplate';
+import { MinimalistTemplate } from '../components/templates/MinimalistTemplate';
+import { ProfessionalTemplate } from '../components/templates/ProfessionalTemplate';
+
+const templateMap = {
+    modern: ModernTemplate,
+    classic: ClassicTemplate,
+    minimalist: MinimalistTemplate,
+    professional: ProfessionalTemplate,
+};
+
+function PortfolioView() {
+  const { userId, resumeId } = useParams();
+  const [resume, setResume] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    async function fetchResume() {
+      setLoading(true);
+      const resumeRef = doc(db, "users", userId, "resumes", resumeId);
+      const docSnap = await getDoc(resumeRef);
+      if (docSnap.exists()) setResume(docSnap.data());
+      else setResume(null);
+      setLoading(false);
+    }
+    fetchResume();
+  }, [userId, resumeId]);
+
+  const handleDownloadPdf = () => {
+    const input = document.getElementById('resume-view');
+    if (!input) return;
+    setPdfLoading(true);
+
+    html2canvas(input, { 
+      scale: 2, // Increase scale for better resolution
+      useCORS: true 
+    }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`resume_${resume.name || "user"}.pdf`);
+        setPdfLoading(false);
+      });
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!resume) return <div className="min-h-screen flex items-center justify-center">Resume not found.</div>;
+
+  const SelectedTemplate = templateMap[resume.template] || ModernTemplate;
+
+  return (
+    <>
+      <NavBar />
+      <div className="bg-gray-100 min-h-screen py-10 font-sans">
+        <div className="max-w-4xl mx-auto"> 
+          <div className="text-center mb-8">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={pdfLoading}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-blue-700 transition-all font-bold disabled:bg-gray-400"
+            >
+              {pdfLoading ? "Generating PDF..." : "Download as PDF"}
+            </button>
+          </div>
+          <SelectedTemplate resume={resume} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default PortfolioView;
