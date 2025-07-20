@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import NavBar from "../components/NavBar";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import toast from 'react-hot-toast'; // Import toast for user feedback
 
 import { ModernTemplate } from '../components/templates/ModernTemplate';
 import { ClassicTemplate } from '../components/templates/ClassicTemplate';
@@ -47,35 +48,35 @@ function PortfolioView() {
   const handleDownloadPdf = () => {
     const input = document.getElementById('resume-view');
     if (!input) {
-      console.error("Resume element with id='resume-view' not found!");
+      toast.error("Resume content not found. Cannot generate PDF.");
       return;
     }
     setPdfLoading(true);
+    toast.loading("Generating PDF... this may take a moment.");
 
     html2canvas(input, {
       scale: 2,
       useCORS: true,
+      allowTaint: true,
       
-      // --- THE ULTIMATE onclone SCRIPT ---
+      // --- THE ABSOLUTE FINAL onclone SCRIPT ---
       onclone: (clonedDoc) => {
-        const originalElements = window.document.querySelectorAll('link[rel="stylesheet"], style');
-        
-        originalElements.forEach((element) => {
-          if (element.tagName === 'LINK') {
-            // Get the raw href attribute (e.g., "/static/css/main.css")
-            const hrefAttr = element.getAttribute('href');
-            if (hrefAttr) {
-              // Build the absolute URL using the site's origin, which is guaranteed to be correct
-              const absoluteUrl = new URL(hrefAttr, window.location.origin).href;
-              const newLink = clonedDoc.createElement('link');
-              newLink.rel = 'stylesheet';
-              newLink.href = absoluteUrl;
-              clonedDoc.head.appendChild(newLink);
-            }
-          } else {
-            // If it's an inline <style> tag, we can clone it directly
-            clonedDoc.head.appendChild(element.cloneNode(true));
+        const originalLinks = window.document.querySelectorAll('link[rel="stylesheet"]');
+        originalLinks.forEach((link) => {
+          // Get the raw href (e.g., /static/css/main.css)
+          const href = link.getAttribute('href');
+          if (href) {
+            const newLink = clonedDoc.createElement('link');
+            newLink.rel = 'stylesheet';
+            // Construct the URL using the document's base URI, the most reliable method
+            newLink.href = new URL(href, document.baseURI).href;
+            clonedDoc.head.appendChild(newLink);
           }
+        });
+        // Also clone inline style blocks
+        const originalStyles = window.document.querySelectorAll('style');
+        originalStyles.forEach((style) => {
+            clonedDoc.head.appendChild(style.cloneNode(true));
         });
       },
     }).then((canvas) => {
@@ -92,9 +93,13 @@ function PortfolioView() {
 
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`resume_${resume.name || "user"}.pdf`);
+        toast.dismiss();
+        toast.success("PDF downloaded successfully!");
       })
       .catch(err => {
-        console.error("html2canvas failed:", err);
+        console.error("PDF generation failed:", err);
+        toast.dismiss();
+        toast.error("An error occurred while generating the PDF.");
       })
       .finally(() => {
         setPdfLoading(false);
