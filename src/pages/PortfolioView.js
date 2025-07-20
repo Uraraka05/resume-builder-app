@@ -5,7 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import NavBar from "../components/NavBar";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import toast from 'react-hot-toast'; // We'll use this for better feedback
+import toast from 'react-hot-toast'; // Import toast for user feedback
 
 import { ModernTemplate } from '../components/templates/ModernTemplate';
 import { ClassicTemplate } from '../components/templates/ClassicTemplate';
@@ -45,68 +45,65 @@ function PortfolioView() {
     fetchResume();
   }, [userId, resumeId]);
 
-  // --- THIS IS THE DEFINITIVE PDF GENERATION FUNCTION ---
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = () => {
     const input = document.getElementById('resume-view');
     if (!input) {
-      toast.error("Resume content could not be found.");
+      toast.error("Resume content not found. Cannot generate PDF.");
       return;
     }
-
     setPdfLoading(true);
-    toast.loading("Preparing styles for PDF generation...");
+    toast.loading("Generating PDF... this may take a moment.");
 
-    // --- STEP 1: MANUALLY FETCH ALL CSS STYLES AS TEXT ---
-    const stylesheets = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
-    const cssPromises = stylesheets.map(sheet =>
-      fetch(sheet.href).then(response => response.text())
-    );
-
-    try {
-      // Wait for all CSS content to be fetched
-      const cssStrings = await Promise.all(cssPromises);
-      const allCss = cssStrings.join('\n');
-      toast.dismiss();
-      toast.loading("Generating PDF image...");
-
-      // --- STEP 2: CALL HTML2CANVAS WITH THE FETCHED CSS ---
-      const canvas = await html2canvas(input, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: true, // A fallback rendering method
-        onclone: (clonedDoc) => {
-          // --- STEP 3: INJECT THE CSS TEXT INTO A <style> TAG ---
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = allCss;
-          clonedDoc.head.appendChild(style);
-        },
-      });
-
-      // --- STEP 4: CREATE AND SAVE THE PDF ---
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`resume_${resume.name || "user"}.pdf`);
+    html2canvas(input, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
       
-      toast.dismiss();
-      toast.success("PDF download complete!");
+      // --- THE ABSOLUTE FINAL onclone SCRIPT ---
+      onclone: (clonedDoc) => {
+        const originalLinks = window.document.querySelectorAll('link[rel="stylesheet"]');
+        originalLinks.forEach((link) => {
+          // Get the raw href (e.g., /static/css/main.css)
+          const href = link.getAttribute('href');
+          if (href) {
+            const newLink = clonedDoc.createElement('link');
+            newLink.rel = 'stylesheet';
+            // Construct the URL using the document's base URI, the most reliable method
+            newLink.href = new URL(href, document.baseURI).href;
+            clonedDoc.head.appendChild(newLink);
+          }
+        });
+        // Also clone inline style blocks
+        const originalStyles = window.document.querySelectorAll('style');
+        originalStyles.forEach((style) => {
+            clonedDoc.head.appendChild(style.cloneNode(true));
+        });
+      },
+    }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
 
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      toast.dismiss();
-      toast.error("Could not generate PDF. Check console for details.");
-    } finally {
-      setPdfLoading(false);
-    }
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`resume_${resume.name || "user"}.pdf`);
+        toast.dismiss();
+        toast.success("PDF downloaded successfully!");
+      })
+      .catch(err => {
+        console.error("PDF generation failed:", err);
+        toast.dismiss();
+        toast.error("An error occurred while generating the PDF.");
+      })
+      .finally(() => {
+        setPdfLoading(false);
+      });
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
