@@ -48,31 +48,32 @@ function PortfolioView() {
   const handleDownloadPdf = () => {
     const input = document.getElementById('resume-view');
     if (!input) {
-      console.error("Resume element not found!");
+      console.error("Resume element with id='resume-view' not found!");
       return;
     }
     setPdfLoading(true);
 
-    html2canvas(input, { 
-      // --- START OF THE ROBUST FIX ---
-      onclone: (document) => {
-        // Find all stylesheets and style blocks from the original document
-        const styleAndLinkElements = Array.from(window.document.querySelectorAll('link[rel="stylesheet"], style'));
-        
-        // Append a clone of each to the head of the document that html2canvas will render
-        styleAndLinkElements.forEach((item) => {
-          document.head.appendChild(item.cloneNode(true));
-        });
-      },
-      // --- END OF THE ROBUST FIX ---
-      
+    html2canvas(input, {
       scale: 2,
       useCORS: true,
-      // Setting explicit dimensions to help the renderer
-      width: input.scrollWidth,
-      height: input.scrollHeight,
-      windowWidth: window.innerWidth,
-      windowHeight: window.innerHeight,
+      
+      // --- THE DEFINITIVE onclone SCRIPT ---
+      onclone: (clonedDoc) => {
+        const originalElements = window.document.querySelectorAll('link[rel="stylesheet"], style');
+        
+        originalElements.forEach((element) => {
+          if (element.tagName === 'LINK') {
+            // If it's a link, create a new link element and set its href to the absolute URL
+            const newLink = clonedDoc.createElement('link');
+            newLink.rel = 'stylesheet';
+            newLink.href = element.href; // .href automatically resolves to the absolute URL
+            clonedDoc.head.appendChild(newLink);
+          } else {
+            // If it's a style tag, we can just clone it directly
+            clonedDoc.head.appendChild(element.cloneNode(true));
+          }
+        });
+      },
     }).then((canvas) => {
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
@@ -89,7 +90,7 @@ function PortfolioView() {
         pdf.save(`resume_${resume.name || "user"}.pdf`);
       })
       .catch(err => {
-        console.error("PDF generation failed:", err);
+        console.error("html2canvas failed:", err);
       })
       .finally(() => {
         setPdfLoading(false);
