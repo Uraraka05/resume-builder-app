@@ -29,20 +29,45 @@ function PortfolioView() {
       setLoading(true);
       const resumeRef = doc(db, "users", userId, "resumes", resumeId);
       const docSnap = await getDoc(resumeRef);
-      if (docSnap.exists()) setResume(docSnap.data());
-      else setResume(null);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+      
+        if (data.education && typeof data.education === 'string') {
+          data.education = [{ school: '', degree: data.education, year: '' }];
+        }
+
+        setResume(data);
+      } else {
+        setResume(null);
+      }
       setLoading(false);
     }
     fetchResume();
   }, [userId, resumeId]);
 
   const handleDownloadPdf = () => {
-    const input = document.getElementById('resume-view');
-    if (!input) return;
+    const input = document.getElementById('resume-view'); // Make sure your template has this ID
+    if (!input) {
+      console.error("Error: The element with id='resume-view' was not found.");
+      return;
+    }
     setPdfLoading(true);
 
     html2canvas(input, { 
-      scale: 2, // Increase scale for better resolution
+
+      onclone: (clonedDoc) => {
+        const originalLinks = document.querySelectorAll('link[rel="stylesheet"]');
+        originalLinks.forEach(link => {
+          clonedDoc.head.appendChild(link.cloneNode(true));
+        });
+      },
+
+      width: input.scrollWidth,
+      height: input.scrollHeight,
+      windowWidth: input.scrollWidth,
+      windowHeight: input.scrollHeight,
+      
+      scale: 2, 
       useCORS: true 
     }).then((canvas) => {
         const imgData = canvas.toDataURL('image/png');
@@ -53,10 +78,15 @@ function PortfolioView() {
         });
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`resume_${resume.name || "user"}.pdf`);
+        setPdfLoading(false);
+      })
+      .catch(err => {
+        console.error("PDF generation failed:", err);
         setPdfLoading(false);
       });
   };
