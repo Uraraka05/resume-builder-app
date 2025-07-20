@@ -29,13 +29,12 @@ function PortfolioView() {
       setLoading(true);
       const resumeRef = doc(db, "users", userId, "resumes", resumeId);
       const docSnap = await getDoc(resumeRef);
+      
       if (docSnap.exists()) {
         const data = docSnap.data();
-      
         if (data.education && typeof data.education === 'string') {
           data.education = [{ school: '', degree: data.education, year: '' }];
         }
-
         setResume(data);
       } else {
         setResume(null);
@@ -57,19 +56,24 @@ function PortfolioView() {
       scale: 2,
       useCORS: true,
       
-      // --- THE DEFINITIVE onclone SCRIPT ---
+      // --- THE ULTIMATE onclone SCRIPT ---
       onclone: (clonedDoc) => {
         const originalElements = window.document.querySelectorAll('link[rel="stylesheet"], style');
         
         originalElements.forEach((element) => {
           if (element.tagName === 'LINK') {
-            // If it's a link, create a new link element and set its href to the absolute URL
-            const newLink = clonedDoc.createElement('link');
-            newLink.rel = 'stylesheet';
-            newLink.href = element.href; // .href automatically resolves to the absolute URL
-            clonedDoc.head.appendChild(newLink);
+            // Get the raw href attribute (e.g., "/static/css/main.css")
+            const hrefAttr = element.getAttribute('href');
+            if (hrefAttr) {
+              // Build the absolute URL using the site's origin, which is guaranteed to be correct
+              const absoluteUrl = new URL(hrefAttr, window.location.origin).href;
+              const newLink = clonedDoc.createElement('link');
+              newLink.rel = 'stylesheet';
+              newLink.href = absoluteUrl;
+              clonedDoc.head.appendChild(newLink);
+            }
           } else {
-            // If it's a style tag, we can just clone it directly
+            // If it's an inline <style> tag, we can clone it directly
             clonedDoc.head.appendChild(element.cloneNode(true));
           }
         });
@@ -116,7 +120,9 @@ function PortfolioView() {
               {pdfLoading ? "Generating PDF..." : "Download as PDF"}
             </button>
           </div>
-          <SelectedTemplate resume={resume} />
+          <div>
+            <SelectedTemplate resume={resume} />
+          </div>
         </div>
       </div>
     </>
