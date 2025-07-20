@@ -46,29 +46,33 @@ function PortfolioView() {
   }, [userId, resumeId]);
 
   const handleDownloadPdf = () => {
-    const input = document.getElementById('resume-view'); // Make sure your template has this ID
+    const input = document.getElementById('resume-view');
     if (!input) {
-      console.error("Error: The element with id='resume-view' was not found.");
+      console.error("Resume element not found!");
       return;
     }
     setPdfLoading(true);
 
     html2canvas(input, { 
-
-      onclone: (clonedDoc) => {
-        const originalLinks = document.querySelectorAll('link[rel="stylesheet"]');
-        originalLinks.forEach(link => {
-          clonedDoc.head.appendChild(link.cloneNode(true));
+      // --- START OF THE ROBUST FIX ---
+      onclone: (document) => {
+        // Find all stylesheets and style blocks from the original document
+        const styleAndLinkElements = Array.from(window.document.querySelectorAll('link[rel="stylesheet"], style'));
+        
+        // Append a clone of each to the head of the document that html2canvas will render
+        styleAndLinkElements.forEach((item) => {
+          document.head.appendChild(item.cloneNode(true));
         });
       },
-
+      // --- END OF THE ROBUST FIX ---
+      
+      scale: 2,
+      useCORS: true,
+      // Setting explicit dimensions to help the renderer
       width: input.scrollWidth,
       height: input.scrollHeight,
-      windowWidth: input.scrollWidth,
-      windowHeight: input.scrollHeight,
-      
-      scale: 2, 
-      useCORS: true 
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
     }).then((canvas) => {
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
@@ -83,10 +87,11 @@ function PortfolioView() {
 
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`resume_${resume.name || "user"}.pdf`);
-        setPdfLoading(false);
       })
       .catch(err => {
         console.error("PDF generation failed:", err);
+      })
+      .finally(() => {
         setPdfLoading(false);
       });
   };
